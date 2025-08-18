@@ -32,6 +32,12 @@ Generate mipmaps in res of decoded apk
 python ./genicons.py -h
 ```
 
+Best on work example:
+
+```bash
+./genicons.py ../assets/rich.png ../decoded/resources/package_1/res -rf
+```
+
 > [!NOTE]
 > It was writen by AI, there are a few issues...
 

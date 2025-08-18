@@ -192,10 +192,10 @@ def main():
     )
     parser.add_argument(
         "-r",
+        "--retain",
         action="store_true",
-        help="Update existing mipmap PNGs using source image and keep their alpha masks",
+        help="Update existing mipmap PNGs using the source image while retaining their alpha masks",
     )
-
     args = parser.parse_args()
 
     print(f"Android Launcher Icon Generator v{VERSION}")
@@ -205,7 +205,7 @@ def main():
 
     src_img = validate_image(args.source_icon)
 
-    if args.replace_existing:
+    if args.retain:
         update_existing_mipmaps(args.res_dir, src_img)
         print("Mipmap update complete.")
         sys.exit(0)
