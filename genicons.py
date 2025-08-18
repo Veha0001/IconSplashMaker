@@ -141,6 +141,10 @@ def generate_adaptive_foreground(source_img, size, mask_file=None):
 
 def update_existing_mipmaps(res_dir, source_img):
     for root, _, files in os.walk(res_dir):
+        # Only process folders that contain 'mipmap-' in their name
+        if "mipmap-" not in os.path.basename(root):
+            continue
+
         for file in files:
             if file.endswith(".png"):
                 path = os.path.join(root, file)
@@ -154,7 +158,8 @@ def update_existing_mipmaps(res_dir, source_img):
                     new_img.paste(resized_src, (0, 0))
                     new_img.putalpha(alpha)
                     new_img.save(path, "PNG", optimize=True)
-                    print(f"Updated mipmap: {path}")
+                    rel_path = os.path.relpath(path, res_dir)
+                    print(f"Updated: {rel_path}")
                 except Exception as e:
                     print(f"Failed updating {path}: {e}")
 
