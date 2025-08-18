@@ -8,7 +8,7 @@ import sys
 import argparse
 from PIL import Image, ImageDraw, ImageOps
 
-VERSION = "1.1.4"
+VERSION = "1.1.5"
 AUTHOR = "Veha0001"
 LAST_UPDATED = "2025-08-18"
 
@@ -103,19 +103,17 @@ def generate_legacy_icon(source_img, size, shape, mask_file=None):
         centering=(0.5, 0.5),
     )
 
-    # Apply custom mask if provided
     if mask_file and os.path.exists(mask_file):
         try:
             mask = Image.open(mask_file).convert("RGBA")
             mask_resized = mask.resize((size, size), Image.Resampling.LANCZOS)
-            _, _, _, alpha = mask_resized.split()  # Extract alpha channel
+            _, _, _, alpha = mask_resized.split()
             squared.putalpha(alpha)
             print(f"Applied custom mask to legacy: {mask_file}")
             return squared
         except Exception as e:
             print(f"Warning: failed to apply mask '{mask_file}' to legacy: {e}")
 
-    # Fallback to shape-based mask
     if shape == "circle":
         return apply_mask(squared, create_circle_mask(size))
     elif shape == "squircle":
@@ -128,7 +126,6 @@ def generate_legacy_icon(source_img, size, shape, mask_file=None):
 def generate_adaptive_foreground(source_img, size, mask_file=None):
     fg_img = apply_safe_zone(source_img, size)
 
-    # Apply custom mask if provided
     if mask_file and os.path.exists(mask_file):
         try:
             mask = Image.open(mask_file).convert("RGBA")
@@ -140,6 +137,26 @@ def generate_adaptive_foreground(source_img, size, mask_file=None):
             print(f"Warning: failed to apply mask '{mask_file}' to foreground: {e}")
 
     return fg_img
+
+
+def update_existing_mipmaps(res_dir, source_img):
+    for root, _, files in os.walk(res_dir):
+        for file in files:
+            if file.endswith(".png"):
+                path = os.path.join(root, file)
+                try:
+                    existing = Image.open(path).convert("RGBA")
+                    alpha = existing.split()[-1]
+                    resized_src = source_img.resize(
+                        existing.size, Image.Resampling.LANCZOS
+                    )
+                    new_img = Image.new("RGBA", existing.size, (0, 0, 0, 0))
+                    new_img.paste(resized_src, (0, 0))
+                    new_img.putalpha(alpha)
+                    new_img.save(path, "PNG", optimize=True)
+                    print(f"Updated mipmap: {path}")
+                except Exception as e:
+                    print(f"Failed updating {path}: {e}")
 
 
 def main():
@@ -173,6 +190,11 @@ def main():
     parser.add_argument(
         "-f", action="store_true", help="Force overwrite existing files"
     )
+    parser.add_argument(
+        "-r",
+        action="store_true",
+        help="Update existing mipmap PNGs using source image and keep their alpha masks",
+    )
 
     args = parser.parse_args()
 
@@ -182,6 +204,11 @@ def main():
         os.makedirs(args.res_dir, exist_ok=True)
 
     src_img = validate_image(args.source_icon)
+
+    if args.replace_existing:
+        update_existing_mipmaps(args.res_dir, src_img)
+        print("Mipmap update complete.")
+        sys.exit(0)
 
     try:
         for density in LEGACY_SIZES:
