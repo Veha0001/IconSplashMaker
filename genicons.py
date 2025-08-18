@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Android Icon Generator with Mask Support
+# Android Icon Generator with Mask Support (mask applies to both legacy & foreground)
 # Author: Veha0001
 # Last Updated: 2025-08-18
 
@@ -8,7 +8,7 @@ import sys
 import argparse
 from PIL import Image, ImageDraw, ImageOps
 
-VERSION = "1.1.2"
+VERSION = "1.1.4"
 AUTHOR = "Veha0001"
 LAST_UPDATED = "2025-08-18"
 
@@ -70,15 +70,6 @@ def create_rounded_square_mask(size, corner_radius=0.167):
     return mask
 
 
-def load_custom_mask(mask_path, size):
-    try:
-        mask_img = Image.open(mask_path).convert("L")
-        return mask_img.resize((size, size), Image.Resampling.LANCZOS)
-    except Exception as e:
-        print(f"Error loading mask file: {e}")
-        sys.exit(1)
-
-
 def apply_mask(image, mask):
     result = Image.new("RGBA", image.size, (0, 0, 0, 0))
     result.paste(image, (0, 0), mask)
@@ -111,21 +102,44 @@ def generate_legacy_icon(source_img, size, shape, mask_file=None):
         color=(0, 0, 0, 0),
         centering=(0.5, 0.5),
     )
-    if mask_file:
-        mask = load_custom_mask(mask_file, size)
-        return apply_mask(squared, mask)
-    elif shape == "circle":
+
+    # Apply custom mask if provided
+    if mask_file and os.path.exists(mask_file):
+        try:
+            mask = Image.open(mask_file).convert("RGBA")
+            mask_resized = mask.resize((size, size), Image.Resampling.LANCZOS)
+            _, _, _, alpha = mask_resized.split()  # Extract alpha channel
+            squared.putalpha(alpha)
+            print(f"Applied custom mask to legacy: {mask_file}")
+            return squared
+        except Exception as e:
+            print(f"Warning: failed to apply mask '{mask_file}' to legacy: {e}")
+
+    # Fallback to shape-based mask
+    if shape == "circle":
         return apply_mask(squared, create_circle_mask(size))
     elif shape == "squircle":
         return apply_mask(squared, create_squircle_mask(size))
     elif shape == "rounded_square":
         return apply_mask(squared, create_rounded_square_mask(size))
-    else:
-        return squared
+    return squared
 
 
-def generate_adaptive_foreground(source_img, size):
-    return apply_safe_zone(source_img, size)
+def generate_adaptive_foreground(source_img, size, mask_file=None):
+    fg_img = apply_safe_zone(source_img, size)
+
+    # Apply custom mask if provided
+    if mask_file and os.path.exists(mask_file):
+        try:
+            mask = Image.open(mask_file).convert("RGBA")
+            mask_resized = mask.resize((size, size), Image.Resampling.LANCZOS)
+            _, _, _, alpha = mask_resized.split()
+            fg_img.putalpha(alpha)
+            print(f"Applied custom mask to foreground: {mask_file}")
+        except Exception as e:
+            print(f"Warning: failed to apply mask '{mask_file}' to foreground: {e}")
+
+    return fg_img
 
 
 def main():
@@ -141,6 +155,12 @@ def main():
         choices=SHAPES,
         default="circle",
         help="Shape for legacy icons (ignored if -m is used)",
+    )
+    parser.add_argument(
+        "-n",
+        "--name",
+        default="ic_launcher",
+        help="Base name for generated icons (default: ic_launcher)",
     )
     parser.add_argument("-m", "--mask", help="Custom mask file (PNG with alpha)")
     parser.add_argument(
@@ -172,14 +192,16 @@ def main():
             foreground_size = ADAPTIVE_FOREGROUND_SIZES[density]
 
             if not args.skip_foreground:
-                fg_path = os.path.join(mipmap_dir, "ic_launcher_foreground.png")
+                fg_path = os.path.join(mipmap_dir, f"{args.name}_foreground.png")
                 if args.f or not os.path.exists(fg_path):
-                    fg_img = generate_adaptive_foreground(src_img, foreground_size)
+                    fg_img = generate_adaptive_foreground(
+                        src_img, foreground_size, args.mask
+                    )
                     fg_img.save(fg_path, "PNG", optimize=True)
                     print(f"Generated foreground: {fg_path}")
 
             if not args.skip_legacy:
-                legacy_path = os.path.join(mipmap_dir, "ic_launcher.png")
+                legacy_path = os.path.join(mipmap_dir, f"{args.name}.png")
                 if args.f or not os.path.exists(legacy_path):
                     legacy_img = generate_legacy_icon(
                         src_img, legacy_size, args.shape, args.mask
