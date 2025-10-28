@@ -26,7 +26,13 @@ python ./tool.py -h
 
 ### Genicons
 
-Generate mipmaps in res of decoded apk
+install
+
+```bash
+pip install -r ./requirements.txt
+```
+
+Generate mipmaps
 
 ```bash
 python ./genicons.py -h
@@ -35,7 +41,7 @@ python ./genicons.py -h
 Best on work example:
 
 ```bash
-./genicons.py ../assets/rich.png ../decoded/resources/package_1/res -rf
+./genicons.py run ./assets/rich.png icons -f
 ```
 
 > [!NOTE]
