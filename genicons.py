@@ -1,6 +1,7 @@
+#!/usr/bin/env python
 """
 Genicons: Android Icon Generator with Mask Support
-Author: @Veha0001
+Copyright (c) 2025 @Veha0001. All Rights Reserved.
 """
 
 import os
@@ -399,13 +400,6 @@ def repng(
     src_img = validate_image(icon)
     update_existing_mipmaps(res, src_img)
     console.print("[bold green]Mipmap update complete.[/bold green]")
-
-
-@app.callback()
-def main(quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress output")):
-    """Global options."""
-    if quiet:
-        console.file = open(os.devnull, "w")
 
 
 if __name__ == "__main__":
